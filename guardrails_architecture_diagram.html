@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Guardrails Architecture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .title {
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .architecture {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: relative;
+        }
+
+        .flow-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .user-input {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 1.1em;
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
+            min-width: 200px;
+            text-align: center;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .user-input:hover {
+            transform: translateY(-5px);
+        }
+
+        .input-guardrails, .output-guardrails {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(116, 185, 255, 0.3);
+            flex: 1;
+            margin: 0 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .input-guardrails::before, .output-guardrails::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+            100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+        }
+
+        .guardrails-title {
+            color: white;
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .guardrail-item {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 10px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+
+        .guardrail-item:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateX(10px);
+        }
+
+        .critical {
+            border-left: 4px solid #ff6b6b;
+            background: rgba(255, 107, 107, 0.2);
+        }
+
+        .important {
+            border-left: 4px solid #fdcb6e;
+            background: rgba(253, 203, 110, 0.2);
+        }
+
+        .standard {
+            border-left: 4px solid #6c5ce7;
+            background: rgba(108, 92, 231, 0.2);
+        }
+
+        .llm-core {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: 700;
+            box-shadow: 0 15px 35px rgba(0, 184, 148, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .llm-core::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.4; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+        }
+
+        .user-output {
+            background: linear-gradient(135deg, #55a3ff, #3742fa);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 1.1em;
+            box-shadow: 0 8px 20px rgba(85, 163, 255, 0.3);
+            min-width: 200px;
+            text-align: center;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .user-output:hover {
+            transform: translateY(-5px);
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #2c3e50;
+            font-weight: bold;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .critical-color { background: #ff6b6b; }
+        .important-color { background: #fdcb6e; }
+        .standard-color { background: #6c5ce7; }
+
+        .monitoring-section {
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .monitoring-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .tech-stack {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .tech-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .flow-section {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .input-guardrails, .output-guardrails {
+                margin: 0;
+            }
+            
+            .title {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🛡️ LLM Banking Chatbot Guardrails Architecture</h1>
+        
+        <div class="architecture">
+            <!-- Input Flow -->
+            <div class="flow-section">
+                <div class="user-input">
+                    👤 User Input<br>
+                    <small>"Tell me about investment options"</small>
+                </div>
+                
+                <div class="arrow">➡️</div>
+                
+                <div class="input-guardrails">
+                    <h3 class="guardrails-title">🔒 INPUT GUARDRAILS</h3>
+                    <div class="guardrail-item critical">🚨 Prompt Injection Defense</div>
+                    <div class="guardrail-item critical">🛡️ Jailbreaking Prevention</div>
+                    <div class="guardrail-item important">🏦 KYC Verification</div>
+                    <div class="guardrail-item important">🔍 PII Detection</div>
+                    <div class="guardrail-item standard">📊 Rate Limiting</div>
+                    <div class="guardrail-item standard">🤖 Bot Detection</div>
+                    <div class="guardrail-item important">💰 AML Screening</div>
+                    <div class="guardrail-item standard">🌍 Regional Compliance</div>
+                </div>
+            </div>
+
+            <!-- LLM Core -->
+            <div class="flow-section">
+                <div class="arrow">⬇️</div>
+            </div>
+            
+            <div class="llm-core">
+                🧠 LLM PROCESSING ENGINE<br>
+                <small>Banking Knowledge + Contextual Understanding</small>
+            </div>
+
+            <div class="flow-section">
+                <div class="arrow">⬇️</div>
+            </div>
+
+            <!-- Output Flow -->
+            <div class="flow-section">
+                <div class="output-guardrails">
+                    <h3 class="guardrails-title">🔐 OUTPUT GUARDRAILS</h3>
+                    <div class="guardrail-item critical">⚠️ Investment Advice Disclaimer</div>
+                    <div class="guardrail-item critical">📋 Risk Disclosure</div>
+                    <div class="guardrail-item important">🎯 Hallucination Detection</div>
+                    <div class="guardrail-item important">💳 Fee Transparency</div>
+                    <div class="guardrail-item standard">✅ Content Sanitization</div>
+                    <div class="guardrail-item important">🏛️ Regulatory Compliance</div>
+                    <div class="guardrail-item standard">📊 Accuracy Validation</div>
+                    <div class="guardrail-item critical">🔒 Data Anonymization</div>
+                </div>
+                
+                <div class="arrow">➡️</div>
+                
+                <div class="user-output">
+                    💬 Compliant Response<br>
+                    <small>Safe & Regulatory Approved</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring Section -->
+        <div class="monitoring-section">
+            <h3 class="monitoring-title">📊 Real-time Monitoring & Audit</h3>
+            <p>Continuous logging, compliance reporting, and performance analytics</p>
+            <div class="tech-stack">
+                <div class="tech-item">Nemo Guardrails</div>
+                <div class="tech-item">LangChain</div>
+                <div class="tech-item">Azure Content Safety</div>
+                <div class="tech-item">Presidio</div>
+                <div class="tech-item">Custom APIs</div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color critical-color"></div>
+                <span><strong>Critical:</strong> Security & Legal Compliance</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color important-color"></div>
+                <span><strong>Important:</strong> Banking Domain Specific</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color standard-color"></div>
+                <span><strong>Standard:</strong> Quality & Performance</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
